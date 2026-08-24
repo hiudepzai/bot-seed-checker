@@ -18,7 +18,6 @@ const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Map ID Tiếng Anh của Web sang Tiếng Việt hiển thị Discord
 const TARGET_SEEDS = {
   'watermelon_seed': 'Dưa Hấu',
   'pumpkin_seed': 'Bí Ngô',
@@ -35,6 +34,7 @@ const TARGET_SEEDS = {
 let notifiedSeeds = new Set();
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
+let isSendingNotification = false; // Cờ chặn gửi trùng lặp
 
 async function getFreshAccessToken() {
   const now = Date.now();
@@ -80,11 +80,9 @@ async function checkSeeds() {
 
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công! Tìm thấy ${currentItemList.length} món.`);
 
-    // Lấy danh sách tên hạt hiện đang bán trong shop
     const availableSeedIds = currentItemList.map(item => item.name);
     const newFoundSeeds = [];
 
-    // Kiểm tra xem có hạt nào mình cần mua không
     for (const [seedId, displayName] of Object.entries(TARGET_SEEDS)) {
       if (availableSeedIds.includes(seedId)) {
         if (!notifiedSeeds.has(seedId)) {
@@ -92,7 +90,7 @@ async function checkSeeds() {
           notifiedSeeds.add(seedId);
         }
       } else {
-        notifiedSeeds.delete(seedId); // Reset trạng thái khi shop hết hàng
+        notifiedSeeds.delete(seedId);
       }
     }
 
@@ -105,6 +103,9 @@ async function checkSeeds() {
 }
 
 async function sendDiscordNotification(seedList, retries = 2) {
+  if (isSendingNotification && retries === 2) return; // Bỏ qua nếu đang trong tiến trình gửi cũ
+  isSendingNotification = true;
+
   const seedsString = seedList.map(s => `• **HẠT ${s.toUpperCase()}**`).join('\n');
   const payload = {
     content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG CẦN MUA!**\n${seedsString}\n👉 Mua ngay tại: https://thongbao.shop/app`
@@ -115,12 +116,15 @@ async function sendDiscordNotification(seedList, retries = 2) {
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo Discord cho: ${seedList.join(', ')}`);
   } catch (err) {
     if (err.response && err.response.status === 429 && retries > 0) {
-      const retryAfter = (err.response.data?.retry_after || 5) * 1000;
+      // Ưu tiên thời gian Discord trả về, nếu không có thì mặc định chờ 3 giây
+      const retryAfter = (err.response.data?.retry_after ?? 3) * 1000;
       console.log(`Bị Rate Limit Discord, tự động đợi ${retryAfter}ms...`);
       await sleep(retryAfter);
       return sendDiscordNotification(seedList, retries - 1);
     }
     console.error('Lỗi gửi Webhook:', err.message);
+  } finally {
+    isSendingNotification = false;
   }
 }
 

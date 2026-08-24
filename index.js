@@ -3,7 +3,6 @@ const axios = require('axios');
 const cron = require('node-cron');
 const http = require('http');
 
-// Server web duy trì Render hoạt động
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.write('Bot Discord Seed Checker đang chạy!');
@@ -17,24 +16,30 @@ const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
-// Đã bỏ chữ "hạt" và thêm nấm, bắp để test ngay
+// Hàm xóa dấu tiếng Việt để so sánh chính xác tuyệt đối
+function removeAccents(str) {
+  return str.normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+            .toLowerCase();
+}
+
 const TARGET_SEEDS = [
-  'dưa hấu',
-  'bí ngô',
-  'hoa hồng (trắng)',
-  'cây đậu',
-  'khế',
-  'táo đường',
-  'dừa',
-  'bắp', // Thêm để test
-  'nấm'  // Thêm để test
+  'dua hau',
+  'bi ngo',
+  'hoa hong (trang)',
+  'cay dau',
+  'khe',
+  'tao duong',
+  'dua',
+  'bap', // Test
+  'nam'  // Test
 ];
 
 let notifiedSeeds = new Set();
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
 
-// Tự động gia hạn Token từ Google (tối ưu không gọi quá nhiều)
 async function getFreshAccessToken() {
   const now = Date.now();
   if (currentBearerToken && (now - lastTokenFetchTime < 45 * 60 * 1000)) {
@@ -74,19 +79,20 @@ async function checkSeeds() {
       }
     });
 
-    const dataText = typeof responseBody === 'string' ? responseBody.toLowerCase() : JSON.stringify(responseBody).toLowerCase();
+    const rawData = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
+    // Chuyển toàn bộ dữ liệu API về dạng không dấu + viết thường
+    const cleanDataText = removeAccents(rawData);
+
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
 
     for (const seed of TARGET_SEEDS) {
-      const seedLower = seed.toLowerCase();
-
-      if (dataText.includes(seedLower)) {
-        if (!notifiedSeeds.has(seedLower)) {
+      if (cleanDataText.includes(seed)) {
+        if (!notifiedSeeds.has(seed)) {
           await sendDiscordNotification(seed);
-          notifiedSeeds.add(seedLower);
+          notifiedSeeds.add(seed);
         }
       } else {
-        notifiedSeeds.delete(seedLower);
+        notifiedSeeds.delete(seed);
       }
     }
   } catch (error) {
@@ -96,7 +102,7 @@ async function checkSeeds() {
 
 async function sendDiscordNotification(seedName) {
   const payload = {
-    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG!**\nSản phẩm **HẠT ${seedName.toUpperCase()}** đang có trong shop!\n👉 Mua ngay tại: https://thongbao.shop/app`
+    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG!**\nSản phẩm **${seedName.toUpperCase()}** đang có trong shop!\n👉 Mua ngay tại: https://thongbao.shop/app`
   };
 
   try {
@@ -107,7 +113,6 @@ async function sendDiscordNotification(seedName) {
   }
 }
 
-// Kiểm tra tự động MỖI 1 PHÚT
 cron.schedule('* * * * *', () => {
   console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đang kiểm tra danh sách hạt giống...`);
   checkSeeds();

@@ -14,25 +14,33 @@ const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/154144556832758998
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
-// Firebase Credentials tự động gia hạn token vĩnh viễn
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
+// Đã bỏ chữ "hạt" và thêm nấm, bắp để test ngay
 const TARGET_SEEDS = [
-  'hạt dưa hấu',
-  'hạt bí ngô',
-  'hạt giống hoa hồng (trắng)',
-  'hạt cây đậu',
-  'hạt khế',
-  'hạt táo đường',
-  'hạt dừa'
+  'dưa hấu',
+  'bí ngô',
+  'hoa hồng (trắng)',
+  'cây đậu',
+  'khế',
+  'táo đường',
+  'dừa',
+  'bắp', // Thêm để test
+  'nấm'  // Thêm để test
 ];
 
 let notifiedSeeds = new Set();
 let currentBearerToken = '';
+let lastTokenFetchTime = 0;
 
-// Tự động trao đổi Refresh Token lấy ID Token mới từ Google Firebase
+// Tự động gia hạn Token từ Google (tối ưu không gọi quá nhiều)
 async function getFreshAccessToken() {
+  const now = Date.now();
+  if (currentBearerToken && (now - lastTokenFetchTime < 45 * 60 * 1000)) {
+    return currentBearerToken;
+  }
+
   try {
     const res = await axios.post(
       `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`,
@@ -42,7 +50,8 @@ async function getFreshAccessToken() {
       })
     );
     currentBearerToken = `Bearer ${res.data.id_token}`;
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã tự động đổi Token mới thành công!`);
+    lastTokenFetchTime = now;
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã cập nhật Token mới từ Google!`);
     return currentBearerToken;
   } catch (err) {
     console.error('Lỗi khi đổi Refresh Token:', err.message);
@@ -52,7 +61,6 @@ async function getFreshAccessToken() {
 
 async function checkSeeds() {
   try {
-    // Tự động lấy token mới nhất trước mỗi lần kiểm tra
     const token = await getFreshAccessToken();
 
     const responseBody = await cloudscraper({
@@ -88,7 +96,7 @@ async function checkSeeds() {
 
 async function sendDiscordNotification(seedName) {
   const payload = {
-    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG!**\nSản phẩm **${seedName.toUpperCase()}** đang có trong shop!\n👉 Mua ngay tại: https://thongbao.shop/app`
+    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG!**\nSản phẩm **HẠT ${seedName.toUpperCase()}** đang có trong shop!\n👉 Mua ngay tại: https://thongbao.shop/app`
   };
 
   try {
@@ -99,8 +107,8 @@ async function sendDiscordNotification(seedName) {
   }
 }
 
-// Kiểm tra tự động mỗi 5 phút
-cron.schedule('*/5 * * * *', () => {
+// Kiểm tra tự động MỖI 1 PHÚT
+cron.schedule('* * * * *', () => {
   console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đang kiểm tra danh sách hạt giống...`);
   checkSeeds();
 });

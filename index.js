@@ -1,8 +1,9 @@
+const cloudscraper = require('cloudscraper');
 const axios = require('axios');
 const cron = require('node-cron');
 const http = require('http');
 
-// Server web giữ Render luôn chạy miễn phí
+// Server web giữ Render luôn chạy
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.write('Bot Discord Seed Checker đang chạy!');
@@ -27,16 +28,18 @@ let notifiedSeeds = new Set();
 
 async function checkSeeds() {
   try {
-    const response = await axios.get(API_URL, {
+    // Dùng cloudscraper vượt rào Cloudflare 403
+    const responseBody = await cloudscraper({
+      method: 'GET',
+      url: API_URL,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
         'Referer': 'https://thongbao.shop/app'
       }
     });
 
-    const dataText = JSON.stringify(response.data).toLowerCase();
+    const dataText = typeof responseBody === 'string' ? responseBody.toLowerCase() : JSON.stringify(responseBody).toLowerCase();
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
 
     for (const seed of TARGET_SEEDS) {

@@ -16,7 +16,6 @@ const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
-// Hàm xóa dấu tiếng Việt để so sánh chính xác tuyệt đối
 function removeAccents(str) {
   return str.normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -32,8 +31,8 @@ const TARGET_SEEDS = [
   'khe',
   'tao duong',
   'dua',
-  'bap', // Test
-  'nam'  // Test
+  'bap',
+  'nam'
 ];
 
 let notifiedSeeds = new Set();
@@ -80,34 +79,41 @@ async function checkSeeds() {
     });
 
     const rawData = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
-    // Chuyển toàn bộ dữ liệu API về dạng không dấu + viết thường
     const cleanDataText = removeAccents(rawData);
 
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
 
+    const newFoundSeeds = [];
+
     for (const seed of TARGET_SEEDS) {
       if (cleanDataText.includes(seed)) {
         if (!notifiedSeeds.has(seed)) {
-          await sendDiscordNotification(seed);
+          newFoundSeeds.push(seed.toUpperCase());
           notifiedSeeds.add(seed);
         }
       } else {
         notifiedSeeds.delete(seed);
       }
     }
+
+    // Nếu tìm thấy hạt mới, gửi 1 tin nhắn duy nhất
+    if (newFoundSeeds.length > 0) {
+      await sendDiscordNotification(newFoundSeeds);
+    }
   } catch (error) {
     console.error(`[${new Date().toLocaleTimeString('vi-VN')}] Lỗi gọi API:`, error.message);
   }
 }
 
-async function sendDiscordNotification(seedName) {
+async function sendDiscordNotification(seedList) {
+  const seedsString = seedList.map(s => `• **HẠT ${s}**`).join('\n');
   const payload = {
-    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG!**\nSản phẩm **${seedName.toUpperCase()}** đang có trong shop!\n👉 Mua ngay tại: https://thongbao.shop/app`
+    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG CẦN MUA!**\n${seedsString}\n👉 Mua ngay tại: https://thongbao.shop/app`
   };
 
   try {
     await axios.post(DISCORD_WEBHOOK_URL, payload);
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo tag bạn cho: ${seedName}`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
   } catch (err) {
     console.error('Lỗi gửi Webhook:', err.message);
   }

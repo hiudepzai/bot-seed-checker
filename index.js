@@ -9,7 +9,8 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541445568327589989/1KGFQE1pn7CrmdcfIepA4PwLTa71wUB5YB6XVCJ0BSAKwSzwyOTeDDUCO8PWEhzVzoMP';
+// WEBHOOK MỚI CỦA BẠN
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541595620375134324/xo48usphldmVYVzF9WRkdY90KE-ia5PiwEN70ffWqqj82ThQRhIR76Oa9ph3YhisLbST';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
@@ -34,7 +35,6 @@ const TARGET_SEEDS = {
 let notifiedSeeds = new Set();
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
-let isSendingNotification = false; // Cờ chặn gửi trùng lặp
 
 async function getFreshAccessToken() {
   const now = Date.now();
@@ -102,9 +102,11 @@ async function checkSeeds() {
   }
 }
 
-async function sendDiscordNotification(seedList, retries = 2) {
-  if (isSendingNotification && retries === 2) return; // Bỏ qua nếu đang trong tiến trình gửi cũ
-  isSendingNotification = true;
+async function sendDiscordNotification(seedList, retries = 3) {
+  if (retries <= 0) {
+    console.error('Đã vượt quá số lần thử gửi lại Discord Webhook.');
+    return;
+  }
 
   const seedsString = seedList.map(s => `• **HẠT ${s.toUpperCase()}**`).join('\n');
   const payload = {
@@ -113,18 +115,17 @@ async function sendDiscordNotification(seedList, retries = 2) {
 
   try {
     await axios.post(DISCORD_WEBHOOK_URL, payload);
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo Discord cho: ${seedList.join(', ')}`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
   } catch (err) {
-    if (err.response && err.response.status === 429 && retries > 0) {
-      // Ưu tiên thời gian Discord trả về, nếu không có thì mặc định chờ 3 giây
-      const retryAfter = (err.response.data?.retry_after ?? 3) * 1000;
-      console.log(`Bị Rate Limit Discord, tự động đợi ${retryAfter}ms...`);
-      await sleep(retryAfter);
+    if (err.response && err.response.status === 429) {
+      // Đọc chính xác thời gian chờ từ Header/Data trả về của Discord (ms)
+      const waitTime = Math.ceil((err.response.data?.retry_after || 2) * 1000);
+      console.log(`Dính Rate Limit Discord, tự động đợi ${waitTime}ms để gửi lại...`);
+      await sleep(waitTime);
       return sendDiscordNotification(seedList, retries - 1);
+    } else {
+      console.error('Lỗi gửi Webhook:', err.message);
     }
-    console.error('Lỗi gửi Webhook:', err.message);
-  } finally {
-    isSendingNotification = false;
   }
 }
 

@@ -9,7 +9,8 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541445568327589989/1KGFQE1pn7CrmdcfIepA4PwLTa71wUB5YB6XVCJ0BSAKwSzwyOTeDDUCO8PWEhzVzoMP';
+// Đã cập nhật Link Webhook mới của kênh #thoi-tiet
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541585345836228689/Ns0zm5wB2xioNM3XYhxpGLC0szB43pFAJ7LJGqRTRR66TzZtw6xBHhzpqO6E2KOtrfQD';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
@@ -25,7 +26,6 @@ function removeAccents(str) {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Danh sách hạt chính thức + hạt cà rốt dùng để test
 const TARGET_SEEDS = [
   'dua hau',
   'bi ngo',
@@ -34,10 +34,10 @@ const TARGET_SEEDS = [
   'khe',
   'tao duong',
   'dua',
-  'ca rot' // Đã thêm cà rốt
+  'ca rot',
+  'carrot'
 ];
 
-let notifiedSeeds = new Set();
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
 
@@ -89,12 +89,7 @@ async function checkSeeds() {
 
     for (const seed of TARGET_SEEDS) {
       if (cleanDataText.includes(seed)) {
-        if (!notifiedSeeds.has(seed)) {
-          newFoundSeeds.push(seed.toUpperCase());
-          notifiedSeeds.add(seed);
-        }
-      } else {
-        notifiedSeeds.delete(seed);
+        newFoundSeeds.push(seed.toUpperCase());
       }
     }
 
@@ -133,4 +128,8 @@ cron.schedule('* * * * *', () => {
 });
 
 console.log('Bot Cloud đã khởi tạo thành công!');
-checkSeeds();
+
+// Gửi ngay 1 tin nhắn test trực tiếp vào kênh #thoi-tiet
+sendDiscordNotification(['TEST THONG BAO THOI TIET']).then(() => {
+  checkSeeds();
+});

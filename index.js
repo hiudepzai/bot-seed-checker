@@ -9,7 +9,7 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541585345836228689/Ns0zm5wB2xioNM3XYhxpGLC0szB43pFAJ7LJGqRTRR66TzZtw6xBHhzpqO6E2KOtrfQD';
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541445568327589989/1KGFQE1pn7CrmdcfIepA4PwLTa71wUB5YB6XVCJ0BSAKwSzwyOTeDDUCO8PWEhzVzoMP';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
@@ -18,20 +18,23 @@ const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const TARGET_SEEDS = [
-  'watermelon_seed',
-  'pumpkin_seed',
-  'rose_seed_white',
-  'strawberry_seed',
-  'starfruit_seed',
-  'apple_seed',
-  'coconut_seed',
-  'carrot_seed'
-];
+// Map ID Tiếng Anh của Web sang Tiếng Việt hiển thị Discord
+const TARGET_SEEDS = {
+  'watermelon_seed': 'Dưa Hấu',
+  'pumpkin_seed': 'Bí Ngô',
+  'rose_seed_white': 'Hoa Hồng (Trắng)',
+  'strawberry_seed': 'Cây Dâu',
+  'starfruit_seed': 'Khế',
+  'sugar_apple_seed': 'Táo Đường',
+  'coconut_seed': 'Dừa',
+  'carrot_seed': 'Cà Rốt',
+  'corn_seed': 'Bắp (Test)',
+  'mushroom_seed': 'Nấm (Test)'
+};
 
+let notifiedSeeds = new Set();
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
-let lastNotifiedSeeds = ''; // Lưu lại trạng thái hạt đã thông báo đợt trước
 
 async function getFreshAccessToken() {
   const now = Date.now();
@@ -65,52 +68,54 @@ async function checkSeeds() {
       method: 'GET',
       url: API_URL,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Referer': 'https://thongbao.shop/app',
         'Authorization': token
       }
     });
 
-    const rawData = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
-    const cleanDataText = rawData.toLowerCase();
+    const parsedData = typeof responseBody === 'string' ? JSON.parse(responseBody) : responseBody;
+    const currentItemList = parsedData?.data?.data || [];
 
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công! Tìm thấy ${currentItemList.length} món.`);
 
+    // Lấy danh sách tên hạt hiện đang bán trong shop
+    const availableSeedIds = currentItemList.map(item => item.name);
     const newFoundSeeds = [];
 
-    for (const seed of TARGET_SEEDS) {
-      if (cleanDataText.includes(seed)) {
-        newFoundSeeds.push(seed.replace('_seed', '').toUpperCase());
+    // Kiểm tra xem có hạt nào mình cần mua không
+    for (const [seedId, displayName] of Object.entries(TARGET_SEEDS)) {
+      if (availableSeedIds.includes(seedId)) {
+        if (!notifiedSeeds.has(seedId)) {
+          newFoundSeeds.push(displayName);
+          notifiedSeeds.add(seedId);
+        }
+      } else {
+        notifiedSeeds.delete(seedId); // Reset trạng thái khi shop hết hàng
       }
     }
 
-    const currentSeedsKey = newFoundSeeds.sort().join(',');
-
-    // Chỉ gửi thông báo nếu có hạt mới VÀ khác với lần đã thông báo gần nhất
-    if (newFoundSeeds.length > 0 && currentSeedsKey !== lastNotifiedSeeds) {
-      lastNotifiedSeeds = currentSeedsKey;
+    if (newFoundSeeds.length > 0) {
       await sendDiscordNotification(newFoundSeeds);
-    } else if (newFoundSeeds.length === 0) {
-      lastNotifiedSeeds = ''; // Reset lại khi shop hết hạt
     }
   } catch (error) {
     console.error(`[${new Date().toLocaleTimeString('vi-VN')}] Lỗi gọi API:`, error.message);
   }
 }
 
-async function sendDiscordNotification(seedList, retries = 3) {
-  const seedsString = seedList.map(s => `• **HẠT ${s}**`).join('\n');
+async function sendDiscordNotification(seedList, retries = 2) {
+  const seedsString = seedList.map(s => `• **HẠT ${s.toUpperCase()}**`).join('\n');
   const payload = {
     content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG CẦN MUA!**\n${seedsString}\n👉 Mua ngay tại: https://thongbao.shop/app`
   };
 
   try {
     await axios.post(DISCORD_WEBHOOK_URL, payload);
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo thành công cho: ${seedList.join(', ')}`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo Discord cho: ${seedList.join(', ')}`);
   } catch (err) {
     if (err.response && err.response.status === 429 && retries > 0) {
-      const retryAfter = (err.response.data.retry_after || 5) * 1000;
+      const retryAfter = (err.response.data?.retry_after || 5) * 1000;
       console.log(`Bị Rate Limit Discord, tự động đợi ${retryAfter}ms...`);
       await sleep(retryAfter);
       return sendDiscordNotification(seedList, retries - 1);

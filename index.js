@@ -3,6 +3,7 @@ const axios = require('axios');
 const cron = require('node-cron');
 const http = require('http');
 
+// Server web duy trì Render hoạt động
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.write('Bot Discord Seed Checker đang chạy!');
@@ -13,7 +14,9 @@ const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/154144556832758998
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
-const AUTH_TOKEN = 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjZhYzkwNDdmNjcxMmZjZDVjZjY3YTMzMDc5NDFkOWZhNDIyODM5NTUiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiSGnhur91IFBo4bqhbSBUcnVuZyIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NJY1ZGNXNUellxUDl0UVFRR3VtMzI4VURLQXdRUWw3R0NUXzRNRlluanhKYmhvQWc9czk2LWMiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vcGxheXRvZ2V0aGVyLW5vdGkiLCJhdWQiOiJwbGF5dG9nZXRoZXItbm90aSIsImF1dGhfdGltZSI6MTc4MjA5NjA2OSwidXNlcl9pZCI6Ild1ODVldFJwVUpNejBZcjZXUENXWnN6bHI4SjIiLCJzdWIiOiJXdTg1ZXRScFVKTXowWXI2V1BDV1pzemxyOEoyIiwiaWF0IjoxNzg3NTgxMDcwLCJleHAiOjE3ODc1ODQ2NzAsImVtYWlsIjoiaGlldTA5MTYwMDgyMDJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZ29vZ2xlLmNvbSI6WyIxMDUxMDE1OTE3MDU5NzIxNDM2MjEiXSwiZW1haWwiOlsiaGlldTA5MTYwMDgyMDJAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoiZ29vZ2xlLmNvbSJ9fQ.lM7IgGloHv4p-CwdryjMDQaGpnFiIhBevyZ9DmwWbD7ddFWGW3s6K4_I_ZGLFV61OrMByJLD9j7eBARQh4jlF9nrLCDCiD9SZniywLpyW0GzdXXJZTflOrNAnmELbqjFIWMr8nrm4uAk_u_KreSsdgjEC428ISGFrb8XrCN-DW28qxoSQ5PmL0Nc75wwY9EbhBTVS8rn8mLd3_xOyY6mGH9_ZMgExCDhy-ynIT-iNEGmYgGD8ibg6wad_z6gc6vK3nA6v9rTRFkoxSXJiWwbutvZuLL41IrCvVgnKSvhop9Su_bpxckSbww75JEr8AQh3nSGMZNKPAiPHFhxAhHItg';
+// Firebase Credentials tự động gia hạn token vĩnh viễn
+const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
+const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
 const TARGET_SEEDS = [
   'hạt dưa hấu',
@@ -26,9 +29,32 @@ const TARGET_SEEDS = [
 ];
 
 let notifiedSeeds = new Set();
+let currentBearerToken = '';
+
+// Tự động trao đổi Refresh Token lấy ID Token mới từ Google Firebase
+async function getFreshAccessToken() {
+  try {
+    const res = await axios.post(
+      `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: REFRESH_TOKEN
+      })
+    );
+    currentBearerToken = `Bearer ${res.data.id_token}`;
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã tự động đổi Token mới thành công!`);
+    return currentBearerToken;
+  } catch (err) {
+    console.error('Lỗi khi đổi Refresh Token:', err.message);
+    return currentBearerToken;
+  }
+}
 
 async function checkSeeds() {
   try {
+    // Tự động lấy token mới nhất trước mỗi lần kiểm tra
+    const token = await getFreshAccessToken();
+
     const responseBody = await cloudscraper({
       method: 'GET',
       url: API_URL,
@@ -36,7 +62,7 @@ async function checkSeeds() {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Referer': 'https://thongbao.shop/app',
-        'Authorization': AUTH_TOKEN
+        'Authorization': token
       }
     });
 
@@ -73,7 +99,7 @@ async function sendDiscordNotification(seedName) {
   }
 }
 
-// Kiểm tra mỗi 5 phút
+// Kiểm tra tự động mỗi 5 phút
 cron.schedule('*/5 * * * *', () => {
   console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đang kiểm tra danh sách hạt giống...`);
   checkSeeds();

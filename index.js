@@ -1,12 +1,20 @@
 const axios = require('axios');
 const cron = require('node-cron');
+const http = require('http');
+
+// Mở một server web giả để Render không báo lỗi
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.write('Bot Discord Dang Chay 24/7!');
+  res.end();
+}).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
 // Thông tin Webhook & ID Discord của bạn
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541445568327589989/1KGFQE1pn7CrmdcfIepA4PwLTa71wUB5YB6XVCJ0BSAKwSzwyOTeDDUCO8PWEhzVzoMP';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
 
-// Danh sách 7 loại hạt giống theo yêu cầu
+// Danh sách 7 loại hạt giống
 const TARGET_SEEDS = [
   'hạt dưa hấu',
   'hạt bí ngô',
@@ -39,7 +47,6 @@ async function checkSeeds() {
           notifiedSeeds.add(seedLower);
         }
       } else {
-        // Reset nếu hạt hết hàng
         notifiedSeeds.delete(seedLower);
       }
     }
@@ -61,11 +68,10 @@ async function sendDiscordNotification(seedName) {
   }
 }
 
-// Chạy tự động kiểm tra mỗi 5 phút
 cron.schedule('*/5 * * * *', () => {
   console.log(`[${new Date().toLocaleTimeString()}] Đang kiểm tra danh sách hạt giống...`);
   checkSeeds();
 });
 
-console.log('Bot Cloud đã khởi tạo thành công! Đang quét 7 loại hạt giống...');
+console.log('Bot Cloud đã khởi tạo thành công!');
 checkSeeds();

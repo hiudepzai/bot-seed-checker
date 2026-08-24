@@ -9,7 +9,7 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-// Đã cập nhật Link Webhook mới của kênh #thoi-tiet
+// Link Webhook mới của kênh #thoi-tiet
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541585345836228689/Ns0zm5wB2xioNM3XYhxpGLC0szB43pFAJ7LJGqRTRR66TzZtw6xBHhzpqO6E2KOtrfQD';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
@@ -84,6 +84,7 @@ async function checkSeeds() {
     const cleanDataText = removeAccents(rawData);
 
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
+    console.log("--> DỮ LIỆU THỰC TẾ WEB TRẢ VỀ:", cleanDataText);
 
     const newFoundSeeds = [];
 
@@ -129,7 +130,7 @@ cron.schedule('* * * * *', () => {
 
 console.log('Bot Cloud đã khởi tạo thành công!');
 
-// Gửi ngay 1 tin nhắn test trực tiếp vào kênh #thoi-tiet
+// Gửi 1 tin nhắn test tag ngay khi khởi động
 sendDiscordNotification(['TEST THONG BAO THOI TIET']).then(() => {
   checkSeeds();
 });

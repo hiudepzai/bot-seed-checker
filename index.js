@@ -23,6 +23,9 @@ function removeAccents(str) {
             .toLowerCase();
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Danh sách hạt chính thức + hạt cà rốt dùng để test
 const TARGET_SEEDS = [
   'dua hau',
   'bi ngo',
@@ -31,8 +34,7 @@ const TARGET_SEEDS = [
   'khe',
   'tao duong',
   'dua',
-  'bap',
-  'nam'
+  'ca rot' // Đã thêm cà rốt
 ];
 
 let notifiedSeeds = new Set();
@@ -96,7 +98,6 @@ async function checkSeeds() {
       }
     }
 
-    // Nếu tìm thấy hạt mới, gửi 1 tin nhắn duy nhất
     if (newFoundSeeds.length > 0) {
       await sendDiscordNotification(newFoundSeeds);
     }
@@ -105,16 +106,23 @@ async function checkSeeds() {
   }
 }
 
-async function sendDiscordNotification(seedList) {
+async function sendDiscordNotification(seedList, retries = 3) {
   const seedsString = seedList.map(s => `• **HẠT ${s}**`).join('\n');
   const payload = {
     content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG CẦN MUA!**\n${seedsString}\n👉 Mua ngay tại: https://thongbao.shop/app`
   };
 
   try {
+    await sleep(1500);
     await axios.post(DISCORD_WEBHOOK_URL, payload);
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
   } catch (err) {
+    if (err.response && err.response.status === 429 && retries > 0) {
+      const retryAfter = (err.response.data.retry_after || 2) * 1000;
+      console.log(`Bị dính Rate Limit, tự động đợi ${retryAfter}ms để gửi lại...`);
+      await sleep(retryAfter);
+      return sendDiscordNotification(seedList, retries - 1);
+    }
     console.error('Lỗi gửi Webhook:', err.message);
   }
 }

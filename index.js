@@ -9,7 +9,6 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-// Link Webhook mới của kênh #thoi-tiet
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541585345836228689/Ns0zm5wB2xioNM3XYhxpGLC0szB43pFAJ7LJGqRTRR66TzZtw6xBHhzpqO6E2KOtrfQD';
 const DISCORD_USER_ID = '1186603863202078733';
 const API_URL = 'https://thongbao.shop/api/latest/seed';
@@ -17,25 +16,18 @@ const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
-function removeAccents(str) {
-  return str.normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-            .toLowerCase();
-}
-
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Danh sách mã hạt tiếng Anh chuẩn theo dữ liệu Web trả về
 const TARGET_SEEDS = [
-  'dua hau',
-  'bi ngo',
-  'hoa hong (trang)',
-  'cay dau',
-  'khe',
-  'tao duong',
-  'dua',
-  'ca rot',
-  'carrot'
+  'watermelon_seed',  // Dưa hấu
+  'pumpkin_seed',     // Bí ngô
+  'rose_seed_white',  // Hoa hồng
+  'strawberry_seed',  // Cây dâu / Dâu tây
+  'starfruit_seed',   // Khế
+  'apple_seed',       // Táo
+  'coconut_seed',     // Dừa
+  'carrot_seed'       // Cà rốt
 ];
 
 let currentBearerToken = '';
@@ -57,7 +49,7 @@ async function getFreshAccessToken() {
     );
     currentBearerToken = `Bearer ${res.data.id_token}`;
     lastTokenFetchTime = now;
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã cập nhật Token mới từ Google!`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã cập nhật Token mới!`);
     return currentBearerToken;
   } catch (err) {
     console.error('Lỗi khi đổi Refresh Token:', err.message);
@@ -73,7 +65,7 @@ async function checkSeeds() {
       method: 'GET',
       url: API_URL,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Referer': 'https://thongbao.shop/app',
         'Authorization': token
@@ -81,16 +73,15 @@ async function checkSeeds() {
     });
 
     const rawData = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
-    const cleanDataText = removeAccents(rawData);
+    const cleanDataText = rawData.toLowerCase();
 
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công!`);
-    console.log("--> DỮ LIỆU THỰC TẾ WEB TRẢ VỀ:", cleanDataText);
 
     const newFoundSeeds = [];
 
     for (const seed of TARGET_SEEDS) {
       if (cleanDataText.includes(seed)) {
-        newFoundSeeds.push(seed.toUpperCase());
+        newFoundSeeds.push(seed.replace('_seed', '').toUpperCase());
       }
     }
 
@@ -109,13 +100,12 @@ async function sendDiscordNotification(seedList, retries = 3) {
   };
 
   try {
-    await sleep(1500);
     await axios.post(DISCORD_WEBHOOK_URL, payload);
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
   } catch (err) {
     if (err.response && err.response.status === 429 && retries > 0) {
-      const retryAfter = (err.response.data.retry_after || 2) * 1000;
-      console.log(`Bị dính Rate Limit, tự động đợi ${retryAfter}ms để gửi lại...`);
+      const retryAfter = (err.response.data.retry_after || 5) * 1000;
+      console.log(`Bị Rate Limit Discord, tự động đợi ${retryAfter}ms...`);
       await sleep(retryAfter);
       return sendDiscordNotification(seedList, retries - 1);
     }
@@ -129,8 +119,4 @@ cron.schedule('* * * * *', () => {
 });
 
 console.log('Bot Cloud đã khởi tạo thành công!');
-
-// Gửi 1 tin nhắn test tag ngay khi khởi động
-sendDiscordNotification(['TEST THONG BAO THOI TIET']).then(() => {
-  checkSeeds();
-});
+checkSeeds();

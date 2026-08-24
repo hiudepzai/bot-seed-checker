@@ -18,20 +18,20 @@ const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Danh sách mã hạt tiếng Anh chuẩn theo dữ liệu Web trả về
 const TARGET_SEEDS = [
-  'watermelon_seed',  // Dưa hấu
-  'pumpkin_seed',     // Bí ngô
-  'rose_seed_white',  // Hoa hồng
-  'strawberry_seed',  // Cây dâu / Dâu tây
-  'starfruit_seed',   // Khế
-  'apple_seed',       // Táo
-  'coconut_seed',     // Dừa
-  'carrot_seed'       // Cà rốt
+  'watermelon_seed',
+  'pumpkin_seed',
+  'rose_seed_white',
+  'strawberry_seed',
+  'starfruit_seed',
+  'apple_seed',
+  'coconut_seed',
+  'carrot_seed'
 ];
 
 let currentBearerToken = '';
 let lastTokenFetchTime = 0;
+let lastNotifiedSeeds = ''; // Lưu lại trạng thái hạt đã thông báo đợt trước
 
 async function getFreshAccessToken() {
   const now = Date.now();
@@ -85,8 +85,14 @@ async function checkSeeds() {
       }
     }
 
-    if (newFoundSeeds.length > 0) {
+    const currentSeedsKey = newFoundSeeds.sort().join(',');
+
+    // Chỉ gửi thông báo nếu có hạt mới VÀ khác với lần đã thông báo gần nhất
+    if (newFoundSeeds.length > 0 && currentSeedsKey !== lastNotifiedSeeds) {
+      lastNotifiedSeeds = currentSeedsKey;
       await sendDiscordNotification(newFoundSeeds);
+    } else if (newFoundSeeds.length === 0) {
+      lastNotifiedSeeds = ''; // Reset lại khi shop hết hạt
     }
   } catch (error) {
     console.error(`[${new Date().toLocaleTimeString('vi-VN')}] Lỗi gọi API:`, error.message);
@@ -101,7 +107,7 @@ async function sendDiscordNotification(seedList, retries = 3) {
 
   try {
     await axios.post(DISCORD_WEBHOOK_URL, payload);
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo thành công cho: ${seedList.join(', ')}`);
   } catch (err) {
     if (err.response && err.response.status === 429 && retries > 0) {
       const retryAfter = (err.response.data.retry_after || 5) * 1000;

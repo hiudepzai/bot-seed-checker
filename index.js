@@ -22,11 +22,10 @@ const TARGET_SEEDS = {
   'watermelon_seed': 'Dưa Hấu',
   'pumpkin_seed': 'Bí Ngô',
   'rose_seed_white': 'Hoa Hồng (Trắng)',
-  'strawberry_seed': 'Cây Dâu',
   'starfruit_seed': 'Khế',
   'sugar_apple_seed': 'Táo Đường',
   'coconut_seed': 'Dừa',
-  'carrot_seed': 'Cà Rốt'
+  'papaya_seed': 'Đu đủ'
 };
 
 let notifiedSeeds = new Set();

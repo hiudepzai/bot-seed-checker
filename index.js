@@ -5,19 +5,17 @@ const http = require('http');
 
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
-  res.write('Bot Discord Seed Checker đang chạy!');
+  res.write('Bot Telegram Seed Checker đang chạy!');
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-// WEBHOOK MỚI CỦA BẠN
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541595620375134324/xo48usphldmVYVzF9WRkdY90KE-ia5PiwEN70ffWqqj82ThQRhIR76Oa9ph3YhisLbST';
-const DISCORD_USER_ID = '1186603863202078733';
-const API_URL = 'https://thongbao.shop/api/latest/seed';
+// TELEGRAM CONFIG
+const TELEGRAM_BOT_TOKEN = '8969138348:AAFsq9_oVq2Jp4iN5oG8hxjDtnqQxNrtAq0';
+const TELEGRAM_CHAT_ID = '6394160170';
 
+const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const TARGET_SEEDS = {
   'watermelon_seed': 'Dưa Hấu',
@@ -95,37 +93,28 @@ async function checkSeeds() {
     }
 
     if (newFoundSeeds.length > 0) {
-      await sendDiscordNotification(newFoundSeeds);
+      await sendTelegramNotification(newFoundSeeds);
     }
   } catch (error) {
     console.error(`[${new Date().toLocaleTimeString('vi-VN')}] Lỗi gọi API:`, error.message);
   }
 }
 
-async function sendDiscordNotification(seedList, retries = 3) {
-  if (retries <= 0) {
-    console.error('Đã vượt quá số lần thử gửi lại Discord Webhook.');
-    return;
-  }
+async function sendTelegramNotification(seedList) {
+  const seedsString = seedList.map(s => `• <b>HẠT ${s.toUpperCase()}</b>`).join('\n');
+  const message = `🚨 <b>ĐÃ CÓ HẠT GIỐNG CẦN MUA!</b>\n\n${seedsString}\n\n👉 Mua ngay tại: https://thongbao.shop/app`;
 
-  const seedsString = seedList.map(s => `• **HẠT ${s.toUpperCase()}**`).join('\n');
-  const payload = {
-    content: `<@${DISCORD_USER_ID}> 🚨 **ĐÃ CÓ HẠT GIỐNG CẦN MUA!**\n${seedsString}\n👉 Mua ngay tại: https://thongbao.shop/app`
-  };
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
   try {
-    await axios.post(DISCORD_WEBHOOK_URL, payload);
-    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo cho: ${seedList.join(', ')}`);
+    await axios.post(url, {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message,
+      parse_mode: 'HTML'
+    });
+    console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Đã gửi thông báo Telegram cho: ${seedList.join(', ')}`);
   } catch (err) {
-    if (err.response && err.response.status === 429) {
-      // Đọc chính xác thời gian chờ từ Header/Data trả về của Discord (ms)
-      const waitTime = Math.ceil((err.response.data?.retry_after || 2) * 1000);
-      console.log(`Dính Rate Limit Discord, tự động đợi ${waitTime}ms để gửi lại...`);
-      await sleep(waitTime);
-      return sendDiscordNotification(seedList, retries - 1);
-    } else {
-      console.error('Lỗi gửi Webhook:', err.message);
-    }
+    console.error('Lỗi gửi Telegram:', err.message);
   }
 }
 

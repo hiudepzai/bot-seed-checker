@@ -9,7 +9,6 @@ http.createServer((req, res) => {
   res.end();
 }).listen(PORT, () => console.log(`Server web chay tren port ${PORT}`));
 
-// TELEGRAM CONFIG
 const TELEGRAM_BOT_TOKEN = '8969138348:AAFsq9_oVq2Jp4iN5oG8hxjDtnqQxNrtAq0';
 const TELEGRAM_CHAT_ID = '6394160170';
 
@@ -17,14 +16,15 @@ const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
-// DANH SÁCH HẠT CẦN THEO DÕI (ĐÃ XÓA BẮP VÀ NẤM TEST)
 const TARGET_SEEDS = {
   'watermelon_seed': 'Dưa Hấu',
   'pumpkin_seed': 'Bí Ngô',
   'rose_seed_white': 'Hoa Hồng (Trắng)',
+  'strawberry_seed': 'Cây Dâu',
   'starfruit_seed': 'Khế',
   'sugar_apple_seed': 'Táo Đường',
   'coconut_seed': 'Dừa',
+  'carrot_seed': 'Cà Rốt',
   'papaya_seed': 'Đu đủ'
 };
 
@@ -75,6 +75,9 @@ async function checkSeeds() {
     const currentItemList = parsedData?.data?.data || [];
 
     console.log(`[${new Date().toLocaleTimeString('vi-VN')}] Lấy dữ liệu thành công! Tìm thấy ${currentItemList.length} món.`);
+    
+    // In danh sách ID hạt chi tiết ra bảng Log Render
+    console.log('Danh sách ID hạt đang bán:', currentItemList.map(item => `${item.name} (${item.count})`).join(', '));
 
     const availableSeedIds = currentItemList.map(item => item.name);
     const newFoundSeeds = [];

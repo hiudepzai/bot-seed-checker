@@ -17,6 +17,7 @@ const API_URL = 'https://thongbao.shop/api/latest/seed';
 const FIREBASE_API_KEY = 'AIzaSyB8VyYLMy1oms-BxDWLOofTnZg4xmnfUdc';
 const REFRESH_TOKEN = 'AMf-vBz9O-tnffabUrKkGt_CHfXK08_gKbHE1Wjn2PvE39eoJ9TbWrRQc5_9idVInwKDun2RbQc8jlM-HIQNw86tWIe0JmPMh9AwVKQ4DDtWtdxfASYeX1i8VM2MepW_jc-E6ew-7ZHg0zKfpL9hwFa7xcmFCL0x3f8DexetQMqR9hbiEi4sucAVWMyha-uguGPfO5U9SSwu3BrbuLIsVb9kZNSpb76jqvb-1CZfwE1qbGEbhkwjFXAOsHXgsY23tIDtCEduLOYE4A3IuBVwEgjF6FnY99_mG91ULIHc8wDnrmAvGCzcBhlRTpxFmJuCmN6CgBtH2HzhCaDmbzc1ZN3hvo7u49yzK1bPU7-rYJJMh6_DGPIj8WX_kIcO9cyMjWQPGgBZYv7UKqY14aSVczV4mJCL4n6UrGJ0JuRmmwzj_BNwlJaSMIWEyshqkmdBEKRtiUZ_fTK0';
 
+// DANH SÁCH HẠT CẦN THEO DÕI (ĐÃ XÓA BẮP VÀ NẤM TEST)
 const TARGET_SEEDS = {
   'watermelon_seed': 'Dưa Hấu',
   'pumpkin_seed': 'Bí Ngô',
@@ -25,9 +26,7 @@ const TARGET_SEEDS = {
   'starfruit_seed': 'Khế',
   'sugar_apple_seed': 'Táo Đường',
   'coconut_seed': 'Dừa',
-  'carrot_seed': 'Cà Rốt',
-  'corn_seed': 'Bắp (Test)',
-  'mushroom_seed': 'Nấm (Test)'
+  'carrot_seed': 'Cà Rốt'
 };
 
 let notifiedSeeds = new Set();
@@ -102,7 +101,7 @@ async function checkSeeds() {
 
 async function sendTelegramNotification(seedList) {
   const seedsString = seedList.map(s => `• <b>HẠT ${s.toUpperCase()}</b>`).join('\n');
-  const message = `🚨 <b>ĐÃ CÓ HẠT GIỐNG CẦN MUA!</b>\n\n${seedsString}\n\n👉 Mua ngay tại: https://thongbao.shop/app`;
+  const message = `🚨 <b>ĐÃ CÓ HẠT GIỐNG CẦN MUA!</b>\n\n${seedsString}\n\n👉 Vào game mua đi`;
 
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
